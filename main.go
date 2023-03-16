@@ -2,23 +2,62 @@ package main
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/golang/freetype"
+	"github.com/google/uuid"
+	"gorm.io/driver/mysql"
+	gorm "gorm.io/gorm"
 	"image"
+	"image/color"
 	"image/draw"
 	"image/jpeg"
 	"io"
 	"net/http"
 	"os"
-
-	"github.com/gin-gonic/gin"
-	"github.com/golang/freetype"
-	"github.com/google/uuid"
 )
 
+type Poster struct {
+	ID     uint   `gorm:"primaryKey"`
+	Image  []byte `gorm:"not null"`
+	Text   string `gorm:"not null"`
+	Author string `gorm:"not null"`
+}
+
+var db *gorm.DB
+
 func main() {
+	learnGin()
+
+	//quote()
+}
+
+func learnGin() {
+	//r := gin.Default()
+	//
+	//db, err := gorm.Open(mysql.Open("todo.db"), &gorm.Config{})
+	//
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+}
+
+func quote() {
+
+	dsn := "user:password@tcp(127.0.0.1:3306)/database?charset=utf8mb4&parseTime=True&loc=Local"
+	var err error
+	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect database")
+	}
+
+	db.AutoMigrate(&Poster{})
+
 	r := gin.Default()
 
 	//必须先加载所有模板
 	r.LoadHTMLGlob("views/*")
+
+	r.POST("/posters", generatePoster)
 
 	r.GET("/quote", func(c *gin.Context) {
 		// 获取名言和名人信息
@@ -27,7 +66,7 @@ func main() {
 
 		// 创建一个空白的图片
 		img := image.NewRGBA(image.Rect(0, 0, 800, 600))
-		draw.Draw(img, img.Bounds(), image.Black, image.ZP, draw.Src)
+		draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{R: 255, G: 255, B: 255, A: 255}), image.ZP, draw.Src)
 
 		// 打开字体文件
 		fontFile, err := os.Open("font.ttf")
@@ -54,7 +93,7 @@ func main() {
 		ctx.SetDPI(72)
 		ctx.SetFont(font)
 		ctx.SetFontSize(48)
-		ctx.SetSrc(image.White)
+		ctx.SetSrc(image.NewUniform(color.RGBA{R: 255, G: 255, A: 255})) // 设置字体颜色为黄色
 		ctx.SetDst(img)
 
 		// 绘制名言和名人信息
@@ -64,12 +103,15 @@ func main() {
 			c.String(http.StatusInternalServerError, "Error: %v", err)
 			return
 		}
+		println("DrawString: " + quote)
+
 		pt.Y += ctx.PointToFixed(48 * 1.5)
 		_, err = ctx.DrawString("- "+author, pt)
 		if err != nil {
 			c.String(http.StatusInternalServerError, "Error: %v", err)
 			return
 		}
+		println("DrawString: " + author)
 
 		// 保存图片并返回URL
 		fileName := fmt.Sprintf("%s.jpg", uuid.New().String())
@@ -104,4 +146,25 @@ func main() {
 		})
 	})
 	r.Run(":8089")
+}
+
+func generatePoster(c *gin.Context) {
+	//imageData, err := ioutil.ReadAll(c.Request.Body)
+	//if err != nil {
+	//	c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "读取图片数据时发生错误：" + err.Error()})
+	//	return
+	//}
+	//
+	//image, err := imaging.Decode(bytes.NewReader(imageData))
+	//if err != nil {
+	//	c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "解码图片时发生错误：" + err.Error()})
+	//	return
+	//}
+	//
+	//text := c.PostForm("text")
+	//author := c.PostForm("author")
+	//if text == "" {
+	//	c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "缺少文字参数"})
+	//	return
+	//}
 }
